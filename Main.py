@@ -139,8 +139,7 @@ def main():
             choice = input().strip()
             if choice == "0":
                 connection = authorize(False)
-                cur = connection.cursor()
-                status = False
+
             elif choice == "1":
                 connection = authorize(True)
                 cur = connection.cursor()
