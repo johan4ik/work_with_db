@@ -1,17 +1,38 @@
 import os
-
+import sys
 import psycopg2
 from config import host, user, password, db_name, port
 import csv
 
 
-def read_csv(path):  # Чтение csv файла
+def choice_csv():  # Выбор csv файла, по умолчанию идет transactions.csv
+    status = True
+    while status:
+        print("Хотите использовать свой csv файл Y/N")
+        choice = input().strip()
+        if choice == "Y":
+            path = input("введите полный путь к файлу: ")
+            status = False
+        elif choice == "N":
+            path = "csv_files/transactions.csv"
+            status = False
+        else:
+            print("Недопустимое значение")
+            os.system('cls')
+    return path
+
+
+def read_csv(path):  # Чтение csv файла # Проверка на правильность столбцов таблицы
     with open(path, encoding="UTF-8") as data:
         lst = [i for i in data.read().split('\n')]
-        columns = lst[0].split(",")
-        del lst[0]
-        del lst[-1]
-    return lst, columns
+        if lst[0] == 'customer_id,tr_datetime,mcc_code,tr_type,amount,term_id':
+            columns = lst[0].split(",")
+            del lst[0]
+            del lst[-1]
+            return lst, columns
+        else:
+            print("[INFO] CSV файл имеет неверный формат")
+            sys.exit()
 
 
 def exist_test(cur, table_name):  # Проверка на существование таблицы
@@ -24,22 +45,34 @@ def exist_test(cur, table_name):  # Проверка на существован
 
 
 def fill_db(cur, lst):  # Заполнение таблицы данными из csv файла
-    for i in lst:
-        column = i.split(",")
-        cur.execute(f"INSERT into " +
-                    f"transactions (customer_id,tr_datetime,mcc_code_tr_type,amount)"
-                    f"values ({int(column[0])},'{column[1]}','{column[2]} ; {column[3]}',{float(column[4])})")
+    try:
+        for i in lst:
+            column = i.split(",")
+            if len(column) == 6:  # Если строка определенной длины, то записать
+                cur.execute(f"INSERT into " +
+                            f"transactions (customer_id,tr_datetime,mcc_code_tr_type,amount)"
+                            f"values ({int(column[0])},'{column[1]}','{column[2]} ; {column[3]}',{float(column[4])})")
+            else:
+                print("[INFO] Error while working with PostgreSQL ")
+                sys.exit()
+
+    except Exception as _ex:  # Если выпадает какая то ошибка, данные таблицы стираются
+        print("[INFO] Error while working with PostgreSQL", _ex)
+        cur.execute("TRUNCATE transactions;"  # удалить таблицу
+                    "DELETE FROM transactions;")
 
 
-def create_transactions_table(cur):  # Создание таблицы и перезапись
-    lst, columns = read_csv("csv_files/transactions.csv")
-    if not bool(exist_test(cur, "public.projectdb")):  # если таблица не существует - создать и заполнить
-
+def create_table(cur):  # Создание таблицы и перезапись
+    path = choice_csv()  # НЕ ПРОВЕРЯЕТ СОЗДАНА ЛИ ТАБЛИЦА
+    lst, columns = read_csv(path)
+    if not (exist_test(cur, "public.transactions")[0]):  # если таблица не существует - создать и заполнить
+        print("создание таблицы Transactions")
         cur.execute(f"create table IF NOT EXISTS transactions " +
                     f"({columns[0]} integer, {columns[1]} varchar(20),"
                     f"{columns[2]}_{columns[3]} varchar(20) , {columns[4]} real)")
         fill_db(cur, lst)
         print("Таблица успешно создана и заполнена!")
+        print('-----')
     else:  # выбор, оставить таблицу или заполнить заново
         status = True
         while status:
@@ -116,7 +149,7 @@ def main():
                 print("Недопустимое значение")
                 os.system('cls')
 
-        create_transactions_table(cur)
+        create_table(cur)
 
         status = True
         while status:
@@ -142,6 +175,7 @@ def main():
     except Exception as _ex:
         print("[INFO] Error while working with PostgreSQL", _ex)
     finally:
+
         if connection:
             connection.close()
             cur.close()
