@@ -17,13 +17,13 @@ def read_csv(path):  # Чтение csv файла
 def exist_test(cur, table_name):  # Проверка на существование таблицы
     schema = table_name.split('.')[0]
     table = table_name.split('.')[1]
-    test = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = '" + schema + "' AND table_name = '" + table + "' );"
+    test = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = '" + \
+           schema + "' AND table_name = '" + table + "' );"
     cur.execute(test)
     return cur.fetchall()[0]
 
 
-def fill_db(cur):  # Заполнение таблицы данными из csv файла
-    lst, columns = read_csv("csv_files/transactions.csv")
+def fill_db(cur, lst):  # Заполнение таблицы данными из csv файла
     for i in lst:
         column = i.split(",")
         cur.execute(f"INSERT into " +
@@ -32,22 +32,23 @@ def fill_db(cur):  # Заполнение таблицы данными из csv
 
 
 def create_transactions_table(cur):  # Создание таблицы и перезапись
+    lst, columns = read_csv("csv_files/transactions.csv")
     if not bool(exist_test(cur, "public.projectdb")):  # если таблица не существует - создать и заполнить
-        lst, columns = read_csv("csv_files/transactions.csv")
+
         cur.execute(f"create table IF NOT EXISTS transactions " +
                     f"({columns[0]} integer, {columns[1]} varchar(20),"
                     f"{columns[2]}_{columns[3]} varchar(20) , {columns[4]} real)")
-        fill_db(cur)
+        fill_db(cur, lst)
         print("Таблица успешно создана и заполнена!")
-    else:                                              # выбор, оставить таблицу или заполнить заново
+    else:  # выбор, оставить таблицу или заполнить заново
         status = True
         while status:
             answer = input(
                 "Обнаружена  таблица,хотите перезаписать ее? Y/N: ").strip()
             if answer == "Y":
-                cur.execute("TRUNCATE transactions;"   # удалить таблицу
+                cur.execute("TRUNCATE transactions;"  # удалить таблицу
                             "DELETE FROM transactions;")
-                fill_db(cur)
+                fill_db(cur, lst)
                 print("таблица успешно перезаписана\n---")
                 status = False
             elif answer == "N":
@@ -66,7 +67,7 @@ def calculate_variance(cur, choice):  # Нахождение дисперсии
                 "having amount<0 and count(mcc_code_tr_type)>=10) as a")
 
     variance = cur.fetchone()
-    if choice == "1" or choice == "2":   # Записать в csv
+    if choice == "1" or choice == "2":  # Записать в csv
         with open("csv_files/variance.csv", "w", newline="") as csv_writer:
             writer = csv.writer(csv_writer)
             writer.writerow(["variance"])
@@ -102,7 +103,7 @@ def main():
         status = True
         while status:
             print("Авторизация через (1)файл-конфиг(укажите свои значения в поля в файле config.py) (0)или вручную:")
-            choice = input()
+            choice = input().strip()
             if choice == "0":
                 connection = authorize(False)
                 cur = connection.cursor()
@@ -117,18 +118,20 @@ def main():
 
         create_transactions_table(cur)
 
-        variance = calculate_variance(cur, choice)
         status = True
         while status:
             choice = input(
                 "Вывести значение дисперсии на экран - 0\nЗаписать значение в csv-файл - 1\nоба варианта - 2\n").strip()
             if choice == "0":
+                variance = calculate_variance(cur, "0")
                 print(f"Дисперсия : {variance}")
                 status = False
             elif choice == "1":
+                variance = calculate_variance(cur, "1")
                 print("Файл успешно был создан!")
                 status = False
             elif choice == "2":
+                variance = calculate_variance(cur, "2")
                 print(f"Дисперсия : {variance}")
                 print("Файл успешно был создан!")
                 status = False
