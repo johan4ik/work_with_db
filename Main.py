@@ -32,19 +32,20 @@ def fill_db(cur):  # Заполнение таблицы данными из csv
 
 
 def create_transactions_table(cur):  # Создание таблицы и перезапись
-    if not bool(exist_test(cur, "public.projectdb")):
+    if not bool(exist_test(cur, "public.projectdb")):  # если таблица не существует - создать и заполнить
         lst, columns = read_csv("csv_files/transactions.csv")
         cur.execute(f"create table IF NOT EXISTS transactions " +
                     f"({columns[0]} integer, {columns[1]} varchar(20),"
                     f"{columns[2]}_{columns[3]} varchar(20) , {columns[4]} real)")
         fill_db(cur)
         print("Таблица успешно создана и заполнена!")
-    else:
+    else:                                              # выбор, оставить таблицу или заполнить заново
         status = True
         while status:
-            answer = input("Обнаружена  таблица,хотите перезаписать ее? Y/N: ").strip()
+            answer = input(
+                "Обнаружена  таблица,хотите перезаписать ее? Y/N: ").strip()
             if answer == "Y":
-                cur.execute("TRUNCATE transactions;"
+                cur.execute("TRUNCATE transactions;"   # удалить таблицу
                             "DELETE FROM transactions;")
                 fill_db(cur)
                 print("таблица успешно перезаписана\n---")
@@ -65,7 +66,7 @@ def calculate_variance(cur, choice):  # Нахождение дисперсии
                 "having amount<0 and count(mcc_code_tr_type)>=10) as a")
 
     variance = cur.fetchone()
-    if choice == "1" or choice == "2":
+    if choice == "1" or choice == "2":   # Записать в csv
         with open("csv_files/variance.csv", "w", newline="") as csv_writer:
             writer = csv.writer(csv_writer)
             writer.writerow(["variance"])
@@ -76,14 +77,14 @@ def calculate_variance(cur, choice):  # Нахождение дисперсии
 
 def authorize(status):  # Авторизация
     if not status:
-        connection = psycopg2.connect(
+        connection = psycopg2.connect(  # подключение вручную
             host=input("Введите поле host: ").strip(),
             user=input("Введите поле user: ").strip(),
             password=input("Введите пароль: ").strip(),
             database=input("Введите название базы данных: ").strip(),
             port=input("Введите поле port: ").strip()
         )
-    else:
+    else:  # подключение по конфигу
         connection = psycopg2.connect(
             host=host,
             user=user,
@@ -119,7 +120,8 @@ def main():
         variance = calculate_variance(cur, choice)
         status = True
         while status:
-            choice =input("Вывести значение дисперсии на экран - 0\nЗаписать значение в csv-файл - 1\nоба варианта - 2\n").strip()
+            choice = input(
+                "Вывести значение дисперсии на экран - 0\nЗаписать значение в csv-файл - 1\nоба варианта - 2\n").strip()
             if choice == "0":
                 print(f"Дисперсия : {variance}")
                 status = False
