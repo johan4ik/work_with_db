@@ -162,14 +162,13 @@ def variance_output(cur):  # Куда вывести значение диспе
 
 
 def main_menu():
-
     status = True
     while status:
         print("Авторизация через (1)файл-конфиг(укажите свои значения в поля в файле config.py) (0)или вручную:")
         choice = input().strip()
         if choice == "0":
             connection = authorize(False)
-            status=False
+            status = False
 
         elif choice == "1":
             connection = authorize(True)

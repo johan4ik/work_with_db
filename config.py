@@ -1,5 +1,5 @@
 host = "127.0.0.1"
 user = "postgres"
-password = "umvfoxn7"
+password = ""
 db_name = "projectdb"
 port = "5432"
